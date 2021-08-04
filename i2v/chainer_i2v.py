@@ -12,10 +12,14 @@ from chainer.links.caffe import CaffeFunction
 
 class ChainerI2V(Illustration2VecBase):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, use_gpu= True, **kwargs):
         super(ChainerI2V, self).__init__(*args, **kwargs)
         mean = np.array([ 164.76139251,  167.47864617,  181.13838569])
         self.mean = mean
+        self.use_gpu = use_gpu
+        if self.use_gpu:
+            chainer.cuda.get_device_from_id(0).use()
+            self.net.to_gpu()     
 
     def resize_image(self, im, new_dims, interp_order=1):
         # NOTE: we import the following codes from caffe.io.resize_image()
@@ -48,6 +52,8 @@ class ChainerI2V(Illustration2VecBase):
         input_ -= self.mean  # subtract mean
         input_ = input_.transpose((0, 3, 1, 2))  # (N, H, W, C) -> (N, C, H, W)
         x = Variable(input_)
+        if self.use_gpu:
+            x.to_gpu()
         with chainer.using_config('train', False), chainer.using_config('enable_backprop', False):
             y, = self.net(inputs={'data': x}, outputs=[layername])
         return y
@@ -57,14 +63,23 @@ class ChainerI2V(Illustration2VecBase):
             h = self._forward(inputs, layername='conv6_4')
             h = average_pooling_2d(h, ksize=7)
             y = sigmoid(h)
-            return y.data
+            if self.use_gpu:
+                return chainer.cuda.to_cpu(y.data)
+            else:
+                y.data
         elif layername == 'encode1neuron':
             h = self._forward(inputs, layername='encode1')
             y = sigmoid(h)
-            return y.data
+            if self.use_gpu:
+                return chainer.cuda.to_cpu(y.data)
+            else:
+                y.data
         else:
             y = self._forward(inputs, layername)
-            return y.data
+            if self.use_gpu:
+                return chainer.cuda.to_cpu(y.data)
+            else:
+                y.data
 
 def make_i2v_with_chainer(param_path, tag_path=None, threshold_path=None):
     # ignore UserWarnings from chainer

@@ -16,10 +16,10 @@ class CaffeI2V(Illustration2VecBase):
         for ix, in_ in enumerate(inputs):
             input_[ix] = resize_image(in_, self.net.image_dims)
         # Take center crop.
-        center = np.array(self.net.image_dims) / 2.0
+        center = np.array(self.net.image_dims) // 2
         crop = np.tile(center, (1, 2))[0] + np.concatenate([
-            -self.net.crop_dims / 2.0,
-            self.net.crop_dims / 2.0
+            -self.net.crop_dims // 2,
+            self.net.crop_dims // 2
         ])
         input_ = input_[:, crop[0]:crop[2], crop[1]:crop[3], :]
         # Classify
